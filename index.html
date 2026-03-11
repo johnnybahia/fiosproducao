@@ -14,6 +14,15 @@
       cursor: not-allowed !important;
       pointer-events: none;
     }
+    .btn-carregando {
+      opacity: 0.55;
+      cursor: wait !important;
+      pointer-events: none;
+      position: relative;
+    }
+    .btn-carregando::after {
+      content: ' ⏳';
+    }
     
     /* Autocomplete Dropdown */
     #autocomplete-dropdown {
@@ -61,11 +70,11 @@
     <!-- Filtros -->
     <div class="mb-6">
       <div class="flex flex-wrap gap-3">
-        <button onclick="carregarPedidos('novo')"        class="px-4 py-2 font-semibold text-white bg-red-600   rounded-lg shadow-md hover:bg-red-700">Novos</button>
-        <button onclick="carregarPedidos('abertos')"     class="px-4 py-2 font-semibold text-white bg-blue-600  rounded-lg shadow-md hover:bg-blue-700">Abertos</button>
-        <button onclick="carregarPedidos('finalizados')" class="px-4 py-2 font-semibold text-white bg-gray-500 rounded-lg shadow-md hover:bg-gray-600">Finalizados</button>
-        <button onclick="carregarPedidos('tudo')"        class="px-4 py-2 font-semibold text-white bg-teal-500  rounded-lg shadow-md hover:bg-teal-600">Ver Tudo</button>
-        <button onclick="carregarPedidos(null)"          class="px-4 py-2 font-semibold text-white bg-slate-700 rounded-lg shadow-md hover:bg-slate-800">Atualizar</button>
+        <button onclick="carregarPedidos('novo')"        class="btn-filtro px-4 py-2 font-semibold text-white bg-red-600   rounded-lg shadow-md hover:bg-red-700">Novos</button>
+        <button onclick="carregarPedidos('abertos')"     class="btn-filtro px-4 py-2 font-semibold text-white bg-blue-600  rounded-lg shadow-md hover:bg-blue-700">Abertos</button>
+        <button onclick="carregarPedidos('finalizados')" class="btn-filtro px-4 py-2 font-semibold text-white bg-gray-500 rounded-lg shadow-md hover:bg-gray-600">Finalizados</button>
+        <button onclick="carregarPedidos('tudo')"        class="btn-filtro px-4 py-2 font-semibold text-white bg-teal-500  rounded-lg shadow-md hover:bg-teal-600">Ver Tudo</button>
+        <button onclick="carregarPedidos(null)"          class="btn-filtro px-4 py-2 font-semibold text-white bg-slate-700 rounded-lg shadow-md hover:bg-slate-800">Atualizar</button>
         <button onclick="abrirModalLocalizarFio()"       class="px-4 py-2 font-semibold text-white bg-purple-600 rounded-lg shadow-md hover:bg-purple-700">🔍 Localizar Fio</button>
       </div>
 
@@ -564,17 +573,32 @@
       if (autoRefreshTimer) clearInterval(autoRefreshTimer);
     }
 
-    function carregarPedidos(novoFiltro, silencioso = false) {
-      if (isLoadingPedidos && !silencioso) {
-        console.log('⏳ Já está carregando pedidos');
-        return;
-      }
+    function setBotoesCarregando(carregando) {
+      document.querySelectorAll('.btn-filtro').forEach(function(btn) {
+        if (carregando) {
+          btn.classList.add('btn-carregando');
+        } else {
+          btn.classList.remove('btn-carregando');
+        }
+      });
+    }
 
+    function carregarPedidos(novoFiltro, silencioso = false) {
+      // Atualiza o filtro PRIMEIRO — antes de qualquer verificação
       if (novoFiltro !== null && novoFiltro !== undefined) {
         filtroStatus = novoFiltro;
       }
 
+      // Se já está carregando, apenas re-renderiza com o novo filtro e aguarda
+      if (isLoadingPedidos && !silencioso) {
+        console.log('⏳ Já está carregando pedidos — filtro atualizado, aguardando retorno');
+        renderizarPedidos(window.pedidosGlobais);
+        return;
+      }
+
       isLoadingPedidos = true;
+      if (!silencioso) setBotoesCarregando(true);
+
       const netState = document.createElement('div');
       netState.id = 'net-state';
       netState.className = 'fixed top-16 right-4 bg-blue-500 text-white px-3 py-1 rounded shadow text-sm';
@@ -587,6 +611,7 @@
             document.getElementById('net-state').remove();
           }
           isLoadingPedidos = false;
+          setBotoesCarregando(false);
 
           console.log('✅ Pedidos recebidos:', rows?.length || 0);
           console.log('Tipo de dados recebidos:', typeof rows);
@@ -609,6 +634,7 @@
             document.getElementById('net-state').remove();
           }
           isLoadingPedidos = false;
+          setBotoesCarregando(false);
           console.error('❌ Erro ao carregar pedidos:', err);
           console.error('Mensagem de erro:', err.message);
           console.error('Stack:', err.stack);
@@ -898,6 +924,9 @@
       document.getElementById('quantidade').value = '1';
       document.getElementById('kg').value = '';
       document.getElementById('setor-input').value = '';
+      selectedItemId = null;
+      document.getElementById('autocomplete-dropdown').classList.add('hidden');
+      document.getElementById('autocomplete-dropdown').innerHTML = '';
     }
 
     function fecharModalPedido() {
